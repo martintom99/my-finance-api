@@ -42,6 +42,26 @@ def get_data():
             "debug": debug_logs
         })
 
+        # 🟢 加入這段：3. 獲取恆指近期數據 (作為前端靜態圖表的修補包)
+        hsi_recent_data = {"dates": [], "prices": []}
+        try:
+            hsi_t = yf.Ticker("^HSI")
+            hsi_recent = hsi_t.history(period="3mo") # 只抓近 3 個月，極快
+            if not hsi_recent.empty:
+                hsi_recent_data["prices"] = [round(p, 2) for p in hsi_recent['Close'].dropna().tolist()]
+                hsi_recent_data["dates"] = [d.strftime('%Y-%m-%d') for d in hsi_recent.index]
+        except Exception as e:
+            debug_logs['hsi_recent_error'] = str(e)
+
+        # ... (後面獲取其他資產近一年數據的代碼保持不變) ...
+
+        return jsonify({
+            "status": "success",
+            "hsi_pe": round(pe, 2) if pe else "N/A",
+            "hsi_recent": hsi_recent_data, # 🟢 記得把修補包加進回傳的 JSON 裡！
+            "markets": market_data,
+            "debug": debug_logs
+        })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
