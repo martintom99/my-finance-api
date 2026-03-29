@@ -1,34 +1,18 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 import yfinance as yf
-import requests
 
 app = Flask(__name__)
 CORS(app)
-
-# 🚀 升級版偽裝：加入完整的真實瀏覽器特徵，突破 Yahoo 封鎖
-session = requests.Session()
-session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Connection': 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Cache-Control': 'max-age=0'
-})
 
 @app.route('/api/data')
 def get_data():
     debug_logs = {}
     try:
-        # 1. 獲取真實 PE
+        # 1. 獲取真實 PE (讓 yfinance 自己處理連線)
         pe = None
         try:
-            tracker = yf.Ticker("2800.HK", session=session)
+            tracker = yf.Ticker("2800.HK") 
             pe = tracker.info.get('trailingPE') or tracker.info.get('forwardPE')
         except Exception as e:
             debug_logs['pe_error'] = str(e)
@@ -40,7 +24,7 @@ def get_data():
         market_data = {}
         for key, symbol in tickers.items():
             try:
-                t = yf.Ticker(symbol, session=session)
+                t = yf.Ticker(symbol)
                 hist = t.history(period="1y")
                 if not hist.empty:
                     prices = [round(p, 2) for p in hist['Close'].dropna().tolist()]
@@ -55,7 +39,7 @@ def get_data():
             "status": "success",
             "hsi_pe": round(pe, 2) if pe else "N/A",
             "markets": market_data,
-            "debug": debug_logs # 把錯誤訊息傳給前端，方便我們抓蟲
+            "debug": debug_logs
         })
 
     except Exception as e:
