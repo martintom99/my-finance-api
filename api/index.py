@@ -6,7 +6,6 @@ import requests
 app = Flask(__name__)
 CORS(app)
 
-# 偽裝成瀏覽器，避免被 Yahoo 阻擋
 session = requests.Session()
 session.headers.update({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
@@ -15,15 +14,17 @@ session.headers.update({
 @app.route('/api/data')
 def get_data():
     try:
-        # 1. 僅獲取最新 PE (極快)
-        pe = 8.75
+        # 1. 嘗試獲取真實 PE，不放任何假數字
+        pe = None
         try:
             tracker = yf.Ticker("2800.HK", session=session)
-            pe = tracker.info.get('trailingPE', 8.75)
-        except:
-            pass
+            # 嘗試抓 trailingPE，如果沒有就抓 forwardPE
+            info = tracker.info
+            pe = info.get('trailingPE') or info.get('forwardPE')
+        except Exception as e:
+            print(f"PE 獲取失敗: {e}") # 這行會印在 Vercel 的後台 Logs 裡
 
-        # 2. 僅獲取其他資產近一年數據 (快)
+        # 2. 獲取其他資產近一年數據
         tickers = {
             'spx': '^GSPC', 'dji': '^DJI', 'ndx': '^IXIC', 'gold': 'GC=F', 'oil': 'CL=F'
         }
@@ -39,10 +40,10 @@ def get_data():
             except:
                 continue
 
-        # 回傳 JSON 格式 (不再包含龐大的 20 年歷史資料)
+        # 回傳 JSON
         return jsonify({
             "status": "success",
-            "hsi_pe": round(pe, 2),
+            "hsi_pe": round(pe, 2) if pe else "N/A", # 如果沒有真實數據，就回傳 N/A
             "markets": market_data
         })
 
