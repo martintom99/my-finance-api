@@ -13,11 +13,18 @@ def get_data():
     start_date = request.args.get('start') 
     
     try:
-        # 1. 獲取真實 PE 
+        # 1. 獲取真實 PE (全盤托出版)
         pe = None
         try:
-            tracker = yf.Ticker("2800.HK") 
-            pe = tracker.info.get('trailingPE') or tracker.info.get('forwardPE')
+            tracker = yf.Ticker("2800.HK")
+            info = tracker.info
+            
+            # 🟢 關鍵偵探代碼：把 Yahoo 願意給我們的「所有欄位名稱」全部記錄下來！
+            debug_logs['yahoo_given_keys'] = list(info.keys())
+            
+            # 嘗試抓取各種可能的 PE 欄位
+            pe = info.get('trailingPE') or info.get('forwardPE') or info.get('regularMarketPE') or info.get('navPrice')
+            
         except Exception as e:
             debug_logs['pe_error'] = str(e)
 
